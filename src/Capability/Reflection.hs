@@ -43,16 +43,6 @@ class Reifiable c where
   -- XXX: Is this a good place for the @Monad@ constraint?
   reified :: Monad m => Reifies s (Def c m) :- c (Reified c m s)
 
---class Interpret tag c | c -> tag where
---  interpret_ :: Monad m => Def c m -> (c m => m a) -> m a
-
---instance (TagOf c ~ tag, Reifiable c) => Interpret tag c where
---  interpret_ d m = reify d $ \(_ :: Proxy s) ->
---    let replaceProof :: Reifies s (Def c m) :- c m
---        replaceProof = trans proof reified
---          where proof = unsafeCoerceConstraint :: c (Reified c m s) :- c m
---    in m \\ replaceProof
-
 interpret :: forall tag c m a. (TagOf c tag, Reifiable c, Monad m) => Def c m -> (c m => m a) -> m a
 interpret d m = reify d $ \(_ :: Proxy s) ->
   let replaceProof :: Reifies s (Def c m) :- c m
