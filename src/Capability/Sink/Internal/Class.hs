@@ -41,13 +41,13 @@ class Monad m
     -- See 'yield' for more documentation.
     yield_ :: Proxy# tag -> a -> m ()
 
+instance TagOf (HasSink (tag :: k) a) tag
+
 -- | @yield \@tag a@
 -- emits @a@ in the sink capability @tag@.
 yield :: forall tag a m. HasSink tag a m => a -> m ()
 yield = yield_ (proxy# @_ @tag)
 {-# INLINE yield #-}
-
-instance TagOf (HasSink (tag :: k) a) tag
 
 --------------------------------------------------------------------------------
 
