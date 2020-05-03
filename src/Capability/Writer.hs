@@ -33,6 +33,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeInType #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -55,13 +56,17 @@ module Capability.Writer
   , SinkLog (..)
     -- ** Modifiers
   , module Capability.Accessors
+    -- * Reflection
+  , Def (..)
   ) where
 
 import Capability.Accessors
+import Capability.Reflection
 import Capability.Sink
 import Capability.State
 -- import deprecated module to reexport deprecated item for back-compat.
 import Capability.Stream
+import Capability.TagOf
 import Data.Coerce (Coercible, coerce)
 import GHC.Exts (Proxy#, proxy#)
 
@@ -109,6 +114,8 @@ class (Monoid w, Monad m, HasSink tag w m)
     -- Otherwise, you will want to use 'pass'.
     -- See 'pass' for more documentation.
     pass_ :: Proxy# tag -> m (a, w -> w) -> m a
+
+instance TagOf (HasWriter (tag :: w) a) tag
 
 -- | @writer \@tag (a, w)@
 -- lifts a pure writer action @(a, w)@ to a monadic action in an arbitrary
@@ -178,3 +185,31 @@ instance (Monoid w, HasState tag w m)
 -- | Type synonym using the 'TypeOf' type family to specify 'HasWriter'
 -- constraints without having to specify the type associated to a tag.
 type HasWriter' (tag :: k) = HasWriter tag (TypeOf k tag)
+
+--------------------------------------------------------------------------------
+
+-- XXX: Should this go into its own module?
+instance Monoid w => Reifiable (HasWriter tag w) where
+  data Def (HasWriter tag w) m = HasWriter
+    { _writer :: forall a. (a, w) -> m a
+    , _listen :: forall a. m a -> m (a, w)
+    , _pass :: forall a. m (a, w -> w) -> m a
+    }
+  -- XXX: How to handle super class constraints?
+  reified = undefined -- Sub Dict
+
+instance
+  ( Monad m
+  , forall x y. Coercible x y => Coercible (m x) (m y)
+  , Monoid w
+    -- XXX: How to handle super class constraints?
+  , HasSink tag w (Reified (HasWriter tag w) m s)
+  , Reifies s (Def (HasWriter tag w) m) )
+  => HasWriter tag w (Reified (HasWriter tag w) m s)
+  where
+    writer_ :: forall a. Proxy# tag -> (a, w) -> Reified (HasWriter tag w) m s a
+    writer_ _ = coerce @((a, w) -> m a) $ _writer (reflectDef @s)
+    listen_ :: forall a. Proxy# tag -> Reified (HasWriter tag w) m s a -> Reified (HasWriter tag w) m s (a, w)
+    listen_ _ = coerce @(m a -> m (a, w)) $ _listen (reflectDef @s)
+    pass_ :: forall a. Proxy# tag -> Reified (HasWriter tag w) m s (a, w -> w) -> Reified (HasWriter tag w) m s a
+    pass_ _ = coerce @(m (a, w -> w) -> m a) $ _pass (reflectDef @s)
