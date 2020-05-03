@@ -56,6 +56,7 @@ library
     Capability.State.Internal.Strategies
     Capability.State.Internal.Strategies.Common
     Capability.Stream
+    Capability.TagOf
     Capability.TypeOf
     Capability.Writer
     Capability.Writer.Discouraged
@@ -90,11 +91,11 @@ library
 test-suite examples
   type: exitcode-stdio-1.0
   other-modules:
+    Reflection
     WordCount
     CountLog
     Error
     Reader
-    Reflection
     Sink
     State
     Test.Common

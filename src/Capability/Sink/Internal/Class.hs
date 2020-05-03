@@ -8,6 +8,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -23,6 +24,7 @@
 module Capability.Sink.Internal.Class where
 
 import Capability.Reflection
+import Capability.TagOf
 import Data.Coerce (coerce)
 import GHC.Exts (Proxy#, proxy#)
 
@@ -44,6 +46,8 @@ class Monad m
 yield :: forall tag a m. HasSink tag a m => a -> m ()
 yield = yield_ (proxy# @_ @tag)
 {-# INLINE yield #-}
+
+instance TagOf (HasSink (tag :: k) a) tag
 
 --------------------------------------------------------------------------------
 
