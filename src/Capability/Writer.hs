@@ -189,14 +189,26 @@ type HasWriter' (tag :: k) = HasWriter tag (TypeOf k tag)
 --------------------------------------------------------------------------------
 
 -- XXX: Should this go into its own module?
-instance Monoid w => Reifiable (HasWriter tag w) where
+instance
+  ( Monoid w
+  , Reifiable (HasSink tag w) )
+  => Reifiable (HasWriter tag w) where
   data Def (HasWriter tag w) m = HasWriter
-    { _writer :: forall a. (a, w) -> m a
+    { _writerSink :: Def (HasSink tag w) m
+    , _writer :: forall a. (a, w) -> m a
     , _listen :: forall a. m a -> m (a, w)
     , _pass :: forall a. m (a, w -> w) -> m a
     }
-  -- XXX: How to handle super class constraints?
-  reified = undefined -- Sub Dict
+  reified = Sub Dict
+
+instance
+  ( Monoid w
+  , Monad m
+  , Reifies s (Def (HasWriter tag w) m) )
+  => HasSink tag w (Reified (HasWriter tag w) m s)
+  where
+    -- XXX: Is there a way to derive this using @constraints@?
+    yield_ proxy w = Reified $ interpret (reflectDef @s) $ yield_ proxy w
 
 instance
   ( Monad m
