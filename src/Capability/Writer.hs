@@ -208,7 +208,7 @@ instance
   => HasSink tag w (Reified (HasWriter tag w) m s)
   where
     -- XXX: Is there a way to derive this using @constraints@?
-    yield_ proxy w = Reified $ interpret (reflectDef @s) $ yield_ proxy w
+    yield_ _ = coerce $ (_yield . _writerSink) (reflectDef @s)
 
 instance
   ( Monad m
