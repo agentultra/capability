@@ -1,12 +1,26 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Capability.Reflection where
+module Capability.Reflection
+  ( -- * Reflection
+    Reifiable (..)
+  , interpret
+    -- ** Implementation
+  , Reified (..)
+  , reflectDef
+    -- * Re-exported
+  , Reifies
+  , Dict (..)
+  , (:-) (..)
+  ) where
 
 import Data.Constraint
 import Data.Constraint.Unsafe
@@ -16,6 +30,9 @@ import Data.Reflection
 -- XXX: Are @Reified@ and @reflected@ good names?
 newtype Reified (c :: (* -> *) -> Constraint) m s a = Reified { reflected :: m a }
   deriving (Functor, Applicative, Monad)
+
+reflectDef :: forall s c m. Reifies s (Def c m) => Def c m
+reflectDef = reflect (Proxy @s)
 
 class Reifiable c where
   data Def (c :: (* -> *) -> Constraint) (m :: * -> *) :: *

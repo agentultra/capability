@@ -12,6 +12,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeInType #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnboxedTuples #-}
@@ -21,6 +22,8 @@
 
 module Capability.Sink.Internal.Class where
 
+import Capability.Reflection
+import Data.Coerce (coerce)
 import GHC.Exts (Proxy#, proxy#)
 
 -- | Sinking capability.
@@ -41,3 +44,19 @@ class Monad m
 yield :: forall tag a m. HasSink tag a m => a -> m ()
 yield = yield_ (proxy# @_ @tag)
 {-# INLINE yield #-}
+
+--------------------------------------------------------------------------------
+
+-- XXX: Should this go into its own module?
+instance Reifiable (HasSink tag a) where
+  data Def (HasSink tag a) m = HasSink
+    { _yield :: a -> m ()
+    }
+  reified = Sub Dict
+
+instance
+  ( Monad m
+  , Reifies s (Def (HasSink tag a) m) )
+  => HasSink tag a (Reified (HasSink tag a) m s)
+  where
+    yield_ _ = coerce $ _yield (reflectDef @s)
