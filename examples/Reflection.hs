@@ -28,9 +28,8 @@ iota n
 
 accumulate :: (forall m. HasSink "nums" Int m => m ()) -> [Int]
 accumulate m = (flip execState []) $ do
-  interpret
-    -- XXX: Find a way to avoid the type signature
-    (HasSink { _yield = \a -> modify (a:) } :: Def (HasSink "nums" Int) (State [Int]))
+  interpret @"nums"
+    (HasSink { _yield = \a -> modify (a:) })
     m
 
 ----------------------------------------------------------------------
