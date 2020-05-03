@@ -200,16 +200,21 @@ instance Monoid w => Reifiable (HasWriter tag w) where
 
 instance
   ( Monad m
-  , forall x y. Coercible x y => Coercible (m x) (m y)
+  -- XXX: Consider enforcing @Representational@ to enable @coerce@
+  -- , forall x y. Coercible x y => Coercible (m x) (m y)
   , Monoid w
     -- XXX: How to handle super class constraints?
   , HasSink tag w (Reified (HasWriter tag w) m s)
   , Reifies s (Def (HasWriter tag w) m) )
   => HasWriter tag w (Reified (HasWriter tag w) m s)
   where
-    writer_ :: forall a. Proxy# tag -> (a, w) -> Reified (HasWriter tag w) m s a
-    writer_ _ = coerce @((a, w) -> m a) $ _writer (reflectDef @s)
-    listen_ :: forall a. Proxy# tag -> Reified (HasWriter tag w) m s a -> Reified (HasWriter tag w) m s (a, w)
-    listen_ _ = coerce @(m a -> m (a, w)) $ _listen (reflectDef @s)
-    pass_ :: forall a. Proxy# tag -> Reified (HasWriter tag w) m s (a, w -> w) -> Reified (HasWriter tag w) m s a
-    pass_ _ = coerce @(m (a, w -> w) -> m a) $ _pass (reflectDef @s)
+    writer_ _ x = Reified $ _writer (reflectDef @s) x
+    listen_ _ m = Reified $ _listen (reflectDef @s) (reflected m)
+    pass_ _ m = Reified $ _pass (reflectDef @s) (reflected m)
+    -- XXX: Requires @Representational m@.
+    -- writer_ :: forall a. Proxy# tag -> (a, w) -> Reified (HasWriter tag w) m s a
+    -- writer_ _ = coerce @((a, w) -> m a) $ _writer (reflectDef @s)
+    -- listen_ :: forall a. Proxy# tag -> Reified (HasWriter tag w) m s a -> Reified (HasWriter tag w) m s (a, w)
+    -- listen_ _ = coerce @(m a -> m (a, w)) $ _listen (reflectDef @s)
+    -- pass_ :: forall a. Proxy# tag -> Reified (HasWriter tag w) m s (a, w -> w) -> Reified (HasWriter tag w) m s a
+    -- pass_ _ = coerce @(m (a, w -> w) -> m a) $ _pass (reflectDef @s)
