@@ -57,7 +57,7 @@ module Capability.Writer
     -- ** Modifiers
   , module Capability.Accessors
     -- * Reflection
-  , Def (..)
+  , Reified (..)
   ) where
 
 import Capability.Accessors
@@ -189,38 +189,31 @@ type HasWriter' (tag :: k) = HasWriter tag (TypeOf k tag)
 --------------------------------------------------------------------------------
 
 -- XXX: Should this go into its own module?
-instance
-  ( Monoid w
-  , Reifiable (HasSink tag w) )
-  => Reifiable (HasWriter tag w) where
-  data Def (HasWriter tag w) m = HasWriter
-    { _writerSink :: Def (HasSink tag w) m
-    , _writer :: forall a. (a, w) -> m a
-    , _listen :: forall a. m a -> m (a, w)
-    , _pass :: forall a. m (a, w -> w) -> m a
-    }
-  reified = Sub Dict
+data instance Reified (HasWriter tag w) m = HasWriter
+  { _writerSink :: Reified (HasSink tag w) m
+  , _writer :: forall a. (a, w) -> m a
+  , _listen :: forall a. m a -> m (a, w)
+  , _pass :: forall a. m (a, w -> w) -> m a
+  }
 
 instance
   ( Monoid w
   , Monad m
-  , Reifies s (Def (HasWriter tag w) m) )
-  => HasSink tag w (Reified (HasWriter tag w) m s)
+  , Reifies s (Reified (HasWriter tag w) m) )
+  => HasSink tag w (Reflected s (HasWriter tag w) m)
   where
     -- XXX: Is there a way to derive this using @constraints@?
-    yield_ _ = coerce $ (_yield . _writerSink) (reflectDef @s)
+    yield_ _ = coerce $ _yield $ _writerSink $ reified @s
 
 instance
   ( Monad m
   , Monoid w
-    -- XXX: How to handle super class constraints?
-  , HasSink tag w (Reified (HasWriter tag w) m s)
-  , Reifies s (Def (HasWriter tag w) m) )
-  => HasWriter tag w (Reified (HasWriter tag w) m s)
+  , Reifies s (Reified (HasWriter tag w) m) )
+  => HasWriter tag w (Reflected s (HasWriter tag w) m)
   where
-    writer_ :: forall a. Proxy# tag -> (a, w) -> Reified (HasWriter tag w) m s a
-    writer_ _ = coerce @((a, w) -> m a) $ _writer (reflectDef @s)
-    listen_ :: forall a. Proxy# tag -> Reified (HasWriter tag w) m s a -> Reified (HasWriter tag w) m s (a, w)
-    listen_ _ = coerce @(m a -> m (a, w)) $ _listen (reflectDef @s)
-    pass_ :: forall a. Proxy# tag -> Reified (HasWriter tag w) m s (a, w -> w) -> Reified (HasWriter tag w) m s a
-    pass_ _ = coerce @(m (a, w -> w) -> m a) $ _pass (reflectDef @s)
+    writer_ :: forall a. Proxy# tag -> (a, w) -> Reflected s (HasWriter tag w) m a
+    writer_ _ = coerce @((a, w) -> m a) $ _writer (reified @s)
+    listen_ :: forall a. Proxy# tag -> Reflected s (HasWriter tag w) m a -> Reflected s (HasWriter tag w) m (a, w)
+    listen_ _ = coerce @(m a -> m (a, w)) $ _listen (reified @s)
+    pass_ :: forall a. Proxy# tag -> Reflected s (HasWriter tag w) m (a, w -> w) -> Reflected s (HasWriter tag w) m a
+    pass_ _ = coerce @(m (a, w -> w) -> m a) $ _pass (reified @s)

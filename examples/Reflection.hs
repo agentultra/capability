@@ -6,7 +6,6 @@
 
 module Reflection where
 
-import Capability.Derive
 import Capability.Reflection
 import Capability.Sink
 import Capability.Writer
@@ -41,24 +40,25 @@ accumulate m = (flip execState []) $
   reify
     HasSink {_yield = \a -> modify (a :)}
     $ \proxy ->
-      unreflect proxy m
+      unreflect @_ @_ @(HasSink "nums" Int) proxy m
 
---sumWriter :: (forall m. HasWriter "count-writer" (Sum Int) m => m ()) -> Int
---sumWriter m = getSum $ (flip execState (Sum 0)) $ do
---  interpret @"count-writer"
---    HasWriter
---      { _writerSink = HasSink { _yield = \a -> modify (a<>) }
---      , _writer = undefined
---      , _listen = \m' -> do
---          w0 <- get
---          put mempty
---          a <- m'
---          w <- get
---          put (w0 <> w)
---          pure (a, w)
---      , _pass = undefined
---      }
---    m
+sumWriter :: (forall m. HasWriter "count-writer" (Sum Int) m => m ()) -> Int
+sumWriter m = getSum $ (flip execState (Sum 0)) $ do
+  reify
+    HasWriter
+      { _writerSink = HasSink { _yield = \a -> modify (a<>) }
+      , _writer = undefined
+      , _listen = \m' -> do
+          w0 <- get
+          put mempty
+          a <- m'
+          w <- get
+          put (w0 <> w)
+          pure (a, w)
+      , _pass = undefined
+      }
+    $ \proxy ->
+      unreflect @_ @_ @(HasWriter "count-writer" (Sum Int)) proxy m
 
 ----------------------------------------------------------------------
 -- Test Cases
@@ -68,6 +68,6 @@ spec = do
   describe "accumulate" $
     it "evaluates iota" $
       accumulate (iota 10) `shouldBe` [9, 8 .. 0]
-  -- describe "sumWriter" $
-  --   it "evaluates useWriter" $
-  --     sumWriter useWriter `shouldBe` 6
+  describe "sumWriter" $
+    it "evaluates useWriter" $
+      sumWriter useWriter `shouldBe` 6

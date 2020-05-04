@@ -57,6 +57,6 @@ data instance Reified (HasSink tag a) m = HasSink { _yield :: a -> m () }
 instance
   ( Monad m
   , Reifies s (Reified (HasSink tag a) m) )
-  => HasSink tag a (Reflected s m)
+  => HasSink tag a (Reflected s (HasSink tag a) m)
   where
     yield_ _ = coerce $ _yield (reified @s)
