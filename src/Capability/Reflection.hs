@@ -30,6 +30,7 @@ module Capability.Reflection
   ) where
 
 import Capability.Constraints
+import Capability.Derive
 import Capability.TagOf
 import Data.Proxy
 import Data.Reflection
@@ -46,11 +47,15 @@ reified :: forall s c m. Reifies s (Reified c m) => Reified c m
 reified = reflect (Proxy @s)
 
 interpret ::
-  forall tag c m a.
-  (TagOf c tag, forall s. Reifies s (Reified c m) => c (Reflected s c m)) =>
+  forall tag (cs :: [Capability]) c m a.
+  ( TagOf c tag,
+    forall s m'. (Monad m', Reifies s (Reified c m')) => c (Reflected s c m'),
+    Monad m,
+    All cs m
+  ) =>
   Reified c m ->
-  (forall m'. c m' => m' a) ->
+  (forall m'. All (c ': cs) m' => m' a) ->
   m a
 interpret dict action =
-  reify dict $ \proxy ->
-    unreflect @_ @_ @c proxy action
+  reify dict $ \(_ :: Proxy s) ->
+    derive @(Reflected s c) @'[c] @cs action

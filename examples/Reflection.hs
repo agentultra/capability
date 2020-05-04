@@ -37,13 +37,13 @@ useWriter = do
 
 accumulate :: (forall m. HasSink "nums" Int m => m ()) -> [Int]
 accumulate m = (flip execState []) $
-  interpret @"nums"
+  interpret @"nums" @'[]
     HasSink {_yield = \a -> modify (a :)}
     m
 
 sumWriter :: (forall m. HasWriter "count-writer" (Sum Int) m => m ()) -> Int
 sumWriter m = getSum $ (flip execState (Sum 0)) $ do
-  interpret @"count-writer"
+  interpret @"count-writer" @'[]
     HasWriter
       { _writerSink = HasSink { _yield = \a -> modify (a<>) }
       , _writer = undefined
