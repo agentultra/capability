@@ -37,14 +37,13 @@ useWriter = do
 
 accumulate :: (forall m. HasSink "nums" Int m => m ()) -> [Int]
 accumulate m = (flip execState []) $
-  reify
+  interpret @"nums"
     HasSink {_yield = \a -> modify (a :)}
-    $ \proxy ->
-      unreflect @_ @_ @(HasSink "nums" Int) proxy m
+    m
 
 sumWriter :: (forall m. HasWriter "count-writer" (Sum Int) m => m ()) -> Int
 sumWriter m = getSum $ (flip execState (Sum 0)) $ do
-  reify
+  interpret @"count-writer"
     HasWriter
       { _writerSink = HasSink { _yield = \a -> modify (a<>) }
       , _writer = undefined
@@ -57,8 +56,7 @@ sumWriter m = getSum $ (flip execState (Sum 0)) $ do
           pure (a, w)
       , _pass = undefined
       }
-    $ \proxy ->
-      unreflect @_ @_ @(HasWriter "count-writer" (Sum Int)) proxy m
+      m
 
 ----------------------------------------------------------------------
 -- Test Cases
