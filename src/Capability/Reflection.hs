@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -14,38 +15,28 @@
 
 module Capability.Reflection
   ( -- * Reflection
-    Reifiable (..)
-  , interpret
-    -- ** Implementation
-  , Reified (..)
-  , reflectDef
+    Reflected (..)
+  , unreflect
+  , Reified
+  , reified
     -- * Re-exported
   , Reifies
-  , Dict (..)
-  , (:-) (..)
+  , reify
+  , reflect
+  , Proxy (..)
   ) where
 
-import Capability.TagOf
-import Data.Constraint
-import Data.Constraint.Unsafe
+import Capability.Constraints
 import Data.Proxy
 import Data.Reflection
 
--- XXX: Are @Reified@ and @reflected@ good names?
-newtype Reified (c :: (* -> *) -> Constraint) m s a = Reified { reflected :: m a }
+newtype Reflected s m a = Reflect (m a)
   deriving (Functor, Applicative, Monad)
 
-reflectDef :: forall s c m. Reifies s (Def c m) => Def c m
-reflectDef = reflect (Proxy @s)
+unreflect :: proxy s -> Reflected s m a -> m a
+unreflect _ (Reflect m) = m
 
-class Reifiable c where
-  data Def (c :: (* -> *) -> Constraint) (m :: * -> *) :: *
-  -- XXX: Is this a good place for the @Monad@ constraint?
-  reified :: Monad m => Reifies s (Def c m) :- c (Reified c m s)
+data family Reified (c :: (* -> *) -> Constraint) (m :: * -> *)
 
-interpret :: forall tag c m a. (TagOf c tag, Reifiable c, Monad m) => Def c m -> (c m => m a) -> m a
-interpret d m = reify d $ \(_ :: Proxy s) ->
-  let replaceProof :: Reifies s (Def c m) :- c m
-      replaceProof = trans proof reified
-        where proof = unsafeCoerceConstraint :: c (Reified c m s) :- c m
-  in m \\ replaceProof
+reified :: forall s c m. Reifies s (Reified c m) => Reified c m
+reified = reflect (Proxy @s)

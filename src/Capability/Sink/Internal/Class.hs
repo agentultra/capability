@@ -52,15 +52,11 @@ yield = yield_ (proxy# @_ @tag)
 --------------------------------------------------------------------------------
 
 -- XXX: Should this go into its own module?
-instance Reifiable (HasSink tag a) where
-  data Def (HasSink tag a) m = HasSink
-    { _yield :: a -> m ()
-    }
-  reified = Sub Dict
+data instance Reified (HasSink tag a) m = HasSink { _yield :: a -> m () }
 
 instance
   ( Monad m
-  , Reifies s (Def (HasSink tag a) m) )
-  => HasSink tag a (Reified (HasSink tag a) m s)
+  , Reifies s (Reified (HasSink tag a) m) )
+  => HasSink tag a (Reflected s m)
   where
-    yield_ _ = coerce $ _yield (reflectDef @s)
+    yield_ _ = coerce $ _yield (reified @s)
