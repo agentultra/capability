@@ -18,6 +18,7 @@
 module Capability.Reflection
   ( -- * Reflection
     interpret
+  , interpret_
   , Reflected (..)
   , unreflect
   , Reified
@@ -59,3 +60,14 @@ interpret ::
 interpret dict action =
   reify dict $ \(_ :: Proxy s) ->
     derive @(Reflected s c) @'[c] @cs action
+
+interpret_ ::
+  forall tag c m a.
+  ( TagOf c tag,
+    forall s m'. (Monad m', Reifies s (Reified c m')) => c (Reflected s c m'),
+    Monad m
+  ) =>
+  Reified c m ->
+  (forall m'. c m' => m' a) ->
+  m a
+interpret_ = interpret @tag @'[] @c
